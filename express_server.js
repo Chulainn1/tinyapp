@@ -7,7 +7,7 @@ app.set("view engine", "ejs");
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
-
+// ----------------------------Day 1 ------------------------------ //
 function generateRandomString() {
   let alnu = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let len = 6;
@@ -48,10 +48,9 @@ app.post("/urls", (req, res) => {
   let randoStr = generateRandomString();
   urlDatabase[randoStr] = req.body.longURL;
   res.redirect(`/urls/${randoStr}`);
-  // res.send("Ok");  // Respond with 'Ok' (we will replace this)
+  
 });
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`)
 });
-
