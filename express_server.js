@@ -53,18 +53,23 @@ app.post("/urls", (req, res) => {
 
 app.post("/urls/:shortURL/delete", (req, res) => {
   const shortURLToBeDeleted = req.params.shortURL;
-  console.log("deleting shortURL:", shortURLToBeDeleted)
+  console.log("deleted shortURL:", shortURLToBeDeleted)
   delete urlDatabase[shortURLToBeDeleted];
 
-  res.redirect('/urls');
+  res.redirect('/urls/:shortURL');
 });
 
 app.post("/urls/:shortURL/edit", (req, res) => {
   const shortURLToBeEdited = req.params.shortURL;
   console.log("editing shortURL:", shortURLToBeEdited)
-  delete urlDatabase[shortURLToBeEdited];
+  console.log(req.body.longURL)
+  if (urlDatabase[shortURLToBeEdited] && req.body.longURL) {
+    urlDatabase[shortURLToBeEdited] = req.body.longURL;
+  } else {
+    return res.json({error: "short url does not exist"})
+  }
 
-  res.redirect('/urls/:shortURL');
+  res.redirect('/urls');
 });
 
 app.listen(PORT, () => {
