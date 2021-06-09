@@ -32,12 +32,12 @@
           <td><%= url %></td>
           <td><%= urls[url] %></td>
           <td> 
-            <a href="/urls/<%= url %>" > Edit </a>
+            <a class="btn btn-outline-primary"  href="/urls/<%= url %>" > Edit </a>
           </td>
           <td>
             <form method="POST" action="/urls/<%= url %>/delete">
 
-              <button type="submit">Delete URL</button>
+              <button class="btn btn-outline-danger" type="submit">Delete URL</button>
             </form>
           </td>
           
