@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const cookieParser = require('cookie-parser');
 const bodyParser = require("body-parser");
+const bcrypt = require('bcryptjs');
 const PORT = 8080;
 
 app.set("view engine", "ejs");
@@ -165,14 +166,15 @@ app.post("/login", (req, res) => {
   if(!user) {
     return res.status(403).send(`No user under this email: ${email}`)
   }
-  if(user) {
-    if(user.password !== password){
-      return res.status(403).send("passwords don't match")
+   
+  bcrypt.compare(password, user.password, (err, result) => {
+    if(!result) {
+      return res.status(403).send("passwords don't match");
     }
-    
+    // set cookie and redirect to urls
     res.cookie("user_id", user.id);
-  }
-  res.redirect('/urls');
+    res.redirect('/urls');
+  });
 });
 
 // --------- logout POST --------- //
@@ -187,6 +189,7 @@ app.post("/logout", (req, res) => {
 app.post("/register", (req, res) => {
   const password = req.body.password;
   const email = req.body.email;
+  const id = generateRandomString();
 
   if (!password || !email) {
     return res.status(400).send("An email AND password are requried");
@@ -195,10 +198,16 @@ app.post("/register", (req, res) => {
     return res.status(400).send(`An account already exists under ${email}`)
   }
 
-  const id = generateRandomString();
-  const user = { id, email, password }
-  users[id] = user;
-  console.log(user)
+  bcrypt.genSalt(10, (err, salt) => {
+    bcrypt.hash(password, salt, (err, hash) => {
+
+      const user = { id, email, password: hash };
+
+      // --- add user to database --- //
+      users[id] = user;
+      console.log(users);
+    });
+  });
   res.cookie("user_id", id)
   res.redirect("/urls");
 });
