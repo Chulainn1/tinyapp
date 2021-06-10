@@ -7,7 +7,7 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
 
-    <title>Login</title>
+    <title>Mglw'nafh TinyApp.</title>
   </head>
 
   <body>
@@ -17,16 +17,15 @@
     </header>
 
     <main style="margin: 1em;">
-      <h3>Login</h3>
-      <h4>Don't have an account?<a href="/register">register</a> here</h2>
+      <h3>Welcome Back</h3>
       <form class="form-inline" action="/login" method="POST" >
         <div class="form-group mb-2">
-          <label for="email">email</label>
-          <input class="form-control" type="email" name="email"  style="width: 300px; margin: 1em">
+          <label for="email">email address</label>
+          <input class="form-control" type="email" name="email" placeholder="creative@email.com"  style="width: 300px; margin: 1em">
 
           <label for="password">password</label>
-          <input class="form-control" type="password" name="password" placeholder="your password sucks" style="width: 300px; margin: 1em">
-          <button type="submit" class="btn btn-primary">login</button>
+          <input class="form-control" type="password" name="password" placeholder="Keep it secret, keep it safe!" style="width: 300px; margin: 1em">
+          <button type="submit" class="btn btn-outline-primary">login</button>
         </div>
       </form>
     </main>
