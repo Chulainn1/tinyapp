@@ -19,6 +19,14 @@ function generateRandomString() {
   return result;
 };
 
+const emailLookup = function (email, usersData) {
+  for(const user in usersData) {
+    if (usersData[user].email === email) {
+      return usersData[user];
+    }
+  }
+  return undefined;
+}; 
 
 
 const urlDatabase = {
@@ -44,7 +52,6 @@ const users = {
 
 
 app.get("/urls", (req, res) => {
-  console.log(req.cookies)
   const id = req.cookies["user_id"];
   const user = users[id];
   const templateVars = {
@@ -84,6 +91,11 @@ app.get("/register", (req, res) => {
   res.render("register", templateVars);
 })
 
+app.get("/login", (req, res) => {
+  const templateVars = { user: null }
+  res.render("login", templateVars)
+})
+
 
 
 
@@ -115,25 +127,29 @@ app.post("/urls/:shortURL/edit", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  console.log(typeof req.body.username);
-  res.cookie("user", req.body.email);
-
+  const password = req.body.password;
+  const email = req.body.email;
+  const user = emailLookup(email, users);
+  if(!user) {
+    return res.status(403).send(`No user under this email: ${email}`)
+  }
+  if(user) {
+    if(user.password !== password){
+      return res.status(403).send("passwords don't match")
+    }
+    
+    res.cookie("user_id", user.id);
+  }
   res.redirect('/urls');
 });
+
+
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user");
+  res.clearCookie("user_id");
   res.redirect('/urls');
 });
 
-const emailLookup = function (email, usersData) {
-  for(const user in usersData) {
-    if (usersData[user].email === email) {
-      return usersData[user];
-    }
-  }
-  return 
-}; 
 
 app.post("/register", (req, res) => {
   const password = req.body.password;
@@ -143,7 +159,7 @@ app.post("/register", (req, res) => {
     return res.status(400).send("An email AND password are requried");
   }
   if(emailLookup(email, users)) {
-    return res.status(400).send(`An account already exists under ${usersData[user]}`)
+    return res.status(400).send(`An account already exists under ${email}`)
   }
 
   const id = generateRandomString();
