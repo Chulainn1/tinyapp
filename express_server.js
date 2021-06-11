@@ -66,9 +66,7 @@ app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {shortURL, longURL: userURLs[shortURL], user};
   if (!user) {
     res.redirect("/login");
-  } else if (user && userURLs === undefined){
-    return "no urls"
-  }
+  } 
   res.render("urls_show", templateVars);
 });
 
