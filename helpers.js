@@ -25,7 +25,6 @@ const fetchUserURLs = function(id, data) {
       urls[shortURL] = data[shortURL].longURL;
     } 
   }
-  console.log(urls);
   return urls;
 };
 
