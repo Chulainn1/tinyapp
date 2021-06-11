@@ -23,6 +23,8 @@ const fetchUserURLs = function(id, data) {
   for (const shortURL in data) {
     if (data[shortURL].userID === id) {
       urls[shortURL] = data[shortURL].longURL;
+    } else {
+      return undefined;
     }
   }
   console.log(urls);

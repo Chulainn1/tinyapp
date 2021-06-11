@@ -23,7 +23,7 @@ const {emailLookup, fetchUserURLs, generateRandomString } = require('./helpers')
 const urlDatabase = {};
 const users = {};
 
-// --------- ROUTING --------- // 
+// --------- ROUTING --------- //
 
 
 // --------- urls index page GET --------- //
@@ -31,16 +31,17 @@ const users = {};
 app.get("/urls", (req, res) => {
   const id = req.session.user_id;
   const user = users[id];
-  const userURLs = fetchUserURLs(id, urlDatabase)
+  const userURLs = fetchUserURLs(id, urlDatabase);
   const templateVars = {
-    urls: userURLs,
-    user 
+    user,
+    urls: userURLs
+    
   };
   res.render("urls_index", templateVars);
 });
 
 // --------- url creation GET --------- //
-// renders the creation page for logged in users only.  
+// renders the creation page for logged in users only.
 app.get("/urls/new", (req, res) => {
   
   const id = req.session.user_id;
@@ -48,11 +49,10 @@ app.get("/urls/new", (req, res) => {
   const templateVars = {
     user
   };
-  if(!user) {
+  if (!user) {
     res.redirect("/login");
   }
-  
-  
+
   res.render("urls_new", templateVars);
 });
 
@@ -60,11 +60,15 @@ app.get("/urls/new", (req, res) => {
 // renders the created short url for a given long url.
 app.get("/urls/:shortURL", (req, res) => {
   const id = req.session.user_id;
-  const shortURL = req.params.shortURL
-  const userURLs = fetchUserURLs(id, urlDatabase)
+  const shortURL = req.params.shortURL;
+  const userURLs = fetchUserURLs(id, urlDatabase);
   const user = users[id];
   const templateVars = {shortURL, longURL: userURLs[shortURL], user};
-  
+  if (!user) {
+    res.redirect("/login");
+  } else if (user && userURLs === undefined){
+    return "no urls"
+  }
   res.render("urls_show", templateVars);
 });
 
@@ -76,18 +80,18 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 // --------- register GET --------- //
-// renders registration page. 
+// renders registration page.
 app.get("/register", (req, res) => {
-  const templateVars = { user: null }
+  const templateVars = { user: null };
   res.render("register", templateVars);
-})
+});
 
 // --------- login GET --------- //
-// renders login page. 
+// renders login page.
 app.get("/login", (req, res) => {
-  const templateVars = { user: null }
-  res.render("login", templateVars)
-})
+  const templateVars = { user: null };
+  res.render("login", templateVars);
+});
 
 
 
@@ -108,7 +112,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   const shortURLToBeDeleted = req.params.shortURL;
   const id = req.session.user_id;
   const user = users[id];
-  if(!user) {
+  if (!user) {
     return res.redirect("/login");
   } else {
     delete urlDatabase[shortURLToBeDeleted];
@@ -124,7 +128,7 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   const shortURL = urlDatabase[shortURLToBeEdited];
   const id = req.session.user_id;
   const user = users[id];
-  if(!user) {
+  if (!user) {
     return res.redirect("/login");
   } else if (shortURL && req.body.longURL) {
     shortURL.longURL = req.body.longURL;
@@ -135,17 +139,17 @@ app.post("/urls/:shortURL/edit", (req, res) => {
 });
 
 // --------- login POST --------- //
-// upon entering correct login info, redirect to urls index. 
+// upon entering correct login info, redirect to urls index.
 app.post("/login", (req, res) => {
   const password = req.body.password;
   const email = req.body.email;
   const user = emailLookup(email, users);
-  if(!user) {
-    return res.status(403).send(`No user under this email: ${email}`)
+  if (!user) {
+    return res.status(403).send(`No user under this email: ${email}`);
   }
    
   bcrypt.compare(password, user.password, (err, result) => {
-    if(!result) {
+    if (!result) {
       return res.status(403).send("passwords don't match");
     }
     // set cookie and redirect to urls
@@ -162,7 +166,7 @@ app.post("/logout", (req, res) => {
 });
 
 // --------- registration POST --------- //
-// properly entering credentials results in a redirection to urls. 
+// properly entering credentials results in a redirection to urls.
 app.post("/register", (req, res) => {
   const password = req.body.password;
   const email = req.body.email;
@@ -171,8 +175,8 @@ app.post("/register", (req, res) => {
   if (!password || !email) {
     return res.status(400).send("An email AND password are requried");
   }
-  if(emailLookup(email, users)) {
-    return res.status(400).send(`An account already exists under ${email}`)
+  if (emailLookup(email, users)) {
+    return res.status(400).send(`An account already exists under ${email}`);
   }
 
   bcrypt.genSalt(10, (err, salt) => {
@@ -182,11 +186,10 @@ app.post("/register", (req, res) => {
 
       // --- add user to database --- //
       users[id] = user;
-      console.log(users);
+      req.session.user_id = id;
+      res.redirect("/urls");
     });
   });
-  req.session.user_id = id;
-  res.redirect("/urls");
 });
 
 // --------- Server Listen --------- //
