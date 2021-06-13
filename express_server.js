@@ -20,8 +20,24 @@ const {emailLookup, fetchUserURLs, generateRandomString } = require('./helpers')
 
 // --------- varibles --------- //
 
-const urlDatabase = {};
-const users = {};
+const urlDatabase = {
+  b2xVn2: {longURL: 'http://www.lighthouselabs.ca', userID: 'user2RandomID'},
+  '9sm5xk': {longURL: 'http://www.google.com', userID: 'userRandomID'},
+};
+
+const users = {
+  userRandomID: {
+    id: 'userRandomID',
+    email: 'user@example.com',
+    password: bcrypt.hashSync('123', 10),
+  },
+  user2RandomID: {
+    id: 'user2RandomID',
+    email: 'user2@example.com',
+    password: bcrypt.hashSync('123', 10),
+  },
+};
+
 
 // --------- ROUTING --------- //
 
@@ -44,7 +60,8 @@ app.get("/urls", (req, res) => {
   const templateVars = { user, urls: userURLs };
 
   if (!user) {
-    return res.status(401).send("You gotta login!");
+    const errorMsg = "You gotta login!";
+    return res.status(401).render('error', { user, errorMsg });
   }
   res.render("urls_index", templateVars);
 });
@@ -56,26 +73,30 @@ app.get("/urls/new", (req, res) => {
   const user = users[id];
   const templateVars = { user };
 
-  if (!user) {
+  if (user) {
+    res.render("urls_new", templateVars);
+  } else {
     res.redirect("/register")
   }
 
-  res.render("urls_new", templateVars);
+  
 });
 
 // --------- short url page GET --------- //
 // renders the created short url for a given long url.
 app.get("/urls/:shortURL", (req, res) => {
   const id = req.session.user_id;
-  const shortURL = req.params.shortURL;
-  const userURLs = fetchUserURLs(id, urlDatabase);
   const user = users[id];
+  const userURLs = fetchUserURLs(id, urlDatabase);
+  const shortURL = req.params.shortURL;
   const templateVars = {shortURL, longURL: userURLs[shortURL], user};
 
   if (!urlDatabase[shortURL]) {
-    return res.status(401).send("Hmmm, that short URL doesn't exist.")
+    const errorMsg = "Hmmm, that short URL doesn't exist.";
+    return res.status(401).render('error', { user, errorMsg})
   } else if (!user || !userURLs[shortURL]){
-    return res.status(401).send("Hmmm, you sure that is your URL?")
+    const errorMsg = "Hmmm, did you login?";
+    return res.status(401).render('error', { user, errorMsg})
   } else {
     res.render("urls_show", templateVars);
   }
@@ -85,12 +106,15 @@ app.get("/urls/:shortURL", (req, res) => {
 // --------- redirect GET --------- //
 // redirects to long url page.
 app.get("/u/:shortURL", (req, res) => {
+  const id = req.session.user_id;
+  const user = users[id];
   const shortURL = req.params.shortURL;
-
-  if (urlDatabase[shortURL]) {
-    res.redirect(urlDatabase[req.params.shortURL].longURL);
-  } else { 
-    return res.status(404).send("Hmmm, you sure that is the right shortURL?");
+ 
+  if (!urlDatabase[shortURL]) {
+    const errorMsg = "Hmmm, you sure that shortURL is correct?";
+    return res.status(404).render('error', { user, errorMsg });
+  } else {
+    res.redirect(urlDatabase[shortURL].longURL);
   }
 
 });
@@ -100,10 +124,13 @@ app.get("/u/:shortURL", (req, res) => {
 app.get("/register", (req, res) => {
   const id = req.session.user_id;
   const templateVars = { user: null };
-  if (id) {
+
+  if (!id) {
+    res.render("register", templateVars);
+  } else {
     res.redirect('/urls')
   }
-  res.render("register", templateVars);
+
 });
 
 // --------- login GET --------- //
@@ -111,10 +138,13 @@ app.get("/register", (req, res) => {
 app.get("/login", (req, res) => {
   const id = req.session.user_id;
   const templateVars = { user: null };
-  if (id) {
+  
+  if (!id) {
+    res.render("login", templateVars);
+  } else {
     res.redirect('/urls')
   }
-  res.render("login", templateVars);
+
 });
 
 
@@ -140,14 +170,14 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   const shortURLToBeDeleted = req.params.shortURL;
   const id = req.session.user_id;
   const user = users[id];
-
-  if (!user) {
-    return res.redirect("/login");
-  } else {
+  
+  if (id && id === urlDatabase[shortURLToBeDeleted].userID) {
     delete urlDatabase[shortURLToBeDeleted];
+    res.redirect('/urls');
+  } else {
+    res.status(401).send("Unauthorized")
   }
   
-  res.redirect('/urls');
 });
 
 // --------- edit url POST --------- //
@@ -157,22 +187,13 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   const shortURL = urlDatabase[shortURLToBeEdited];
   const id = req.session.user_id;
   const user = users[id];
-  
-  // if (!user) {
-  //   return res.redirect("/login");
-  // } else if (shortURL && req.body.longURL) {
-  //   shortURL.longURL = req.body.longURL;
-  // } else {
-  //   return res.json({error: "short url does not exist"});
-  // }
 
-  if (id && id === shortURL.user_id) {
+  if (id && id === shortURL.userID) {
     shortURL.longURL = req.body.longURL
     res.redirect('/urls');
   } else {
-    return res.status(401).send("Hmm, you don't have permission to do that.")
+    return res.status(401).send("You don't have permission to do that.")
   }
-
 
 });
 
@@ -182,18 +203,22 @@ app.post("/login", (req, res) => {
   const password = req.body.password;
   const email = req.body.email;
   const user = emailLookup(email, users);
+
   if (!user) {
-    return res.status(403).send(`No user under this email: ${email}`);
+    const errorMsg = `No user under this email: ${email}`;
+    return res.status(403).render('error', {user ,errorMsg});
   }
    
   bcrypt.compare(password, user.password, (err, result) => {
     if (!result) {
-      return res.status(403).send("passwords don't match");
+      const errorMsg = "passwords don't match";
+      return res.status(403).render('error', { user, errorMsg});
     }
     // set cookie and redirect to urls
     req.session.user_id = user.id;
     res.redirect('/urls');
   });
+
 });
 
 // --------- logout POST --------- //
@@ -211,29 +236,31 @@ app.post("/register", (req, res) => {
   const id = generateRandomString();
 
   if (!password || !email) {
-    return res.status(400).send("An email AND password are requried");
+    const errorMsg = "An email AND password are requried";
+    return res.status(400).render('error', {user: null, errorMsg});
   }
+
   if (emailLookup(email, users)) {
-    return res.status(400).send(`An account already exists under ${email}`);
+    const errorMsg = `An account already exists under ${email}`;
+    return res.status(400).render('error', { user: null, errorMsg });
   }
 
   bcrypt.genSalt(10, (err, salt) => {
     bcrypt.hash(password, salt, (err, hash) => {
 
       const user = { id, email, password: hash };
-      console.log(hash);
+
       // --- add user to database --- //
       users[id] = user;
       req.session.user_id = id;
       res.redirect("/urls");
     });
   });
-  
 });
 
 // --------- Server Listen --------- //
 app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
+  console.log(`Tinyapp listening on port ${PORT}!`);
 });
 
 
