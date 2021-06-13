@@ -26,31 +26,38 @@ const users = {};
 // --------- ROUTING --------- //
 
 
+app.get('/', (req, res) => {
+  if (req.session.user_id) {
+    res.redirect('/urls');
+  } else {
+    res.redirect('/login');
+  }
+});
+
+
 // --------- urls index page GET --------- //
 // shows urls that belong to the user
 app.get("/urls", (req, res) => {
   const id = req.session.user_id;
   const user = users[id];
   const userURLs = fetchUserURLs(id, urlDatabase);
-  const templateVars = {
-    user,
-    urls: userURLs
-    
-  };
+  const templateVars = { user, urls: userURLs };
+
+  if (!user) {
+    return res.status(401).send("You gotta login!");
+  }
   res.render("urls_index", templateVars);
 });
 
 // --------- url creation GET --------- //
 // renders the creation page for logged in users only.
-app.get("/urls/new", (req, res) => {
-  
+app.get("/urls/new", (req, res) => { 
   const id = req.session.user_id;
   const user = users[id];
-  const templateVars = {
-    user
-  };
+  const templateVars = { user };
+
   if (!user) {
-    res.redirect("/login");
+    res.redirect("/register")
   }
 
   res.render("urls_new", templateVars);
@@ -64,30 +71,49 @@ app.get("/urls/:shortURL", (req, res) => {
   const userURLs = fetchUserURLs(id, urlDatabase);
   const user = users[id];
   const templateVars = {shortURL, longURL: userURLs[shortURL], user};
-  if (!user) {
-    res.redirect("/login");
-  } 
-  res.render("urls_show", templateVars);
+
+  if (!urlDatabase[shortURL]) {
+    return res.status(401).send("Hmmm, that short URL doesn't exist.")
+  } else if (!user || !userURLs[shortURL]){
+    return res.status(401).send("Hmmm, you sure that is your URL?")
+  } else {
+    res.render("urls_show", templateVars);
+  }
+
 });
 
 // --------- redirect GET --------- //
 // redirects to long url page.
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL].longURL;
-  res.redirect(longURL);
+  const shortURL = req.params.shortURL;
+
+  if (urlDatabase[shortURL]) {
+    res.redirect(urlDatabase[req.params.shortURL].longURL);
+  } else { 
+    return res.status(404).send("Hmmm, you sure that is the right shortURL?");
+  }
+
 });
 
 // --------- register GET --------- //
 // renders registration page.
 app.get("/register", (req, res) => {
+  const id = req.session.user_id;
   const templateVars = { user: null };
+  if (id) {
+    res.redirect('/urls')
+  }
   res.render("register", templateVars);
 });
 
 // --------- login GET --------- //
 // renders login page.
 app.get("/login", (req, res) => {
+  const id = req.session.user_id;
   const templateVars = { user: null };
+  if (id) {
+    res.redirect('/urls')
+  }
   res.render("login", templateVars);
 });
 
@@ -98,10 +124,14 @@ app.get("/login", (req, res) => {
 // adds a new url to the database while redirecting to short url page
 app.post("/urls", (req, res) => {
   const id = req.session.user_id;
-  let randoStr = generateRandomString();
-  urlDatabase[randoStr] = {longURL: req.body.longURL, userID: id};
-  res.redirect(`/urls/${randoStr}`);
   
+  if(id) {
+    let randoStr = generateRandomString();
+    urlDatabase[randoStr] = {longURL: req.body.longURL, userID: id};
+    res.redirect(`/urls/${randoStr}`);
+  } else {
+    return res.status(401).send("You gotta make an account first!");
+  }
 });
 
 // --------- delete url POST --------- //
@@ -110,6 +140,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   const shortURLToBeDeleted = req.params.shortURL;
   const id = req.session.user_id;
   const user = users[id];
+
   if (!user) {
     return res.redirect("/login");
   } else {
@@ -126,14 +157,23 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   const shortURL = urlDatabase[shortURLToBeEdited];
   const id = req.session.user_id;
   const user = users[id];
-  if (!user) {
-    return res.redirect("/login");
-  } else if (shortURL && req.body.longURL) {
-    shortURL.longURL = req.body.longURL;
+  
+  // if (!user) {
+  //   return res.redirect("/login");
+  // } else if (shortURL && req.body.longURL) {
+  //   shortURL.longURL = req.body.longURL;
+  // } else {
+  //   return res.json({error: "short url does not exist"});
+  // }
+
+  if (id && id === shortURL.user_id) {
+    shortURL.longURL = req.body.longURL
+    res.redirect('/urls');
   } else {
-    return res.json({error: "short url does not exist"});
+    return res.status(401).send("Hmm, you don't have permission to do that.")
   }
-  res.redirect('/urls');
+
+
 });
 
 // --------- login POST --------- //
@@ -160,7 +200,7 @@ app.post("/login", (req, res) => {
 // clears cookies and redirects to urls index
 app.post("/logout", (req, res) => {
   req.session = null;
-  res.redirect('/urls');
+  res.redirect('/login');
 });
 
 // --------- registration POST --------- //
@@ -181,13 +221,14 @@ app.post("/register", (req, res) => {
     bcrypt.hash(password, salt, (err, hash) => {
 
       const user = { id, email, password: hash };
-
+      console.log(hash);
       // --- add user to database --- //
       users[id] = user;
       req.session.user_id = id;
       res.redirect("/urls");
     });
   });
+  
 });
 
 // --------- Server Listen --------- //
