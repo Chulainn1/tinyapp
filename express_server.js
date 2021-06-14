@@ -96,7 +96,7 @@ app.get("/urls/:shortURL", (req, res) => {
     const errorMsg = "Hmmm, that short URL doesn't exist.";
     return res.status(401).render('error', { user, errorMsg});
   } else if (!user || !userURLs[shortURL]) {
-    const errorMsg = "Hmmm, did you login?";
+    const errorMsg = "Hmmm, login to your account";
     return res.status(401).render('error', { user, errorMsg});
   } else {
     res.render("urls_show", templateVars);
