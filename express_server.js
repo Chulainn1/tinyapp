@@ -41,7 +41,8 @@ const users = {
 
 // --------- ROUTING --------- //
 
-
+// --------- / GET --------- //
+// redirect to urls if logged in otherwise redirect to login page
 app.get('/', (req, res) => {
   if (req.session.user_id) {
     res.redirect('/urls');
@@ -67,8 +68,8 @@ app.get("/urls", (req, res) => {
 });
 
 // --------- url creation GET --------- //
-// renders the creation page for logged in users only.
-app.get("/urls/new", (req, res) => { 
+// renders the creation page for logged in users.
+app.get("/urls/new", (req, res) => {
   const id = req.session.user_id;
   const user = users[id];
   const templateVars = { user };
@@ -76,14 +77,14 @@ app.get("/urls/new", (req, res) => {
   if (user) {
     res.render("urls_new", templateVars);
   } else {
-    res.redirect("/register")
+    const errorMsg = "You must be logged in to Create a New URL";
+    return res.status(401).render('error', { user, errorMsg});
   }
 
-  
 });
 
 // --------- short url page GET --------- //
-// renders the created short url for a given long url.
+// renders the the shortURL page for logged in users.
 app.get("/urls/:shortURL", (req, res) => {
   const id = req.session.user_id;
   const user = users[id];
@@ -93,10 +94,10 @@ app.get("/urls/:shortURL", (req, res) => {
 
   if (!urlDatabase[shortURL]) {
     const errorMsg = "Hmmm, that short URL doesn't exist.";
-    return res.status(401).render('error', { user, errorMsg})
-  } else if (!user || !userURLs[shortURL]){
+    return res.status(401).render('error', { user, errorMsg});
+  } else if (!user || !userURLs[shortURL]) {
     const errorMsg = "Hmmm, did you login?";
-    return res.status(401).render('error', { user, errorMsg})
+    return res.status(401).render('error', { user, errorMsg});
   } else {
     res.render("urls_show", templateVars);
   }
@@ -104,7 +105,7 @@ app.get("/urls/:shortURL", (req, res) => {
 });
 
 // --------- redirect GET --------- //
-// redirects to long url page.
+// redirects to longURL for an existing shortURL.
 app.get("/u/:shortURL", (req, res) => {
   const id = req.session.user_id;
   const user = users[id];
@@ -120,7 +121,7 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 // --------- register GET --------- //
-// renders registration page.
+// renders registration page. Redirects to /urls if you're logged in.
 app.get("/register", (req, res) => {
   const id = req.session.user_id;
   const templateVars = { user: null };
@@ -128,13 +129,13 @@ app.get("/register", (req, res) => {
   if (!id) {
     res.render("register", templateVars);
   } else {
-    res.redirect('/urls')
+    res.redirect('/urls');
   }
 
 });
 
 // --------- login GET --------- //
-// renders login page.
+// renders login page. Redirects to /urls if you're logged in.
 app.get("/login", (req, res) => {
   const id = req.session.user_id;
   const templateVars = { user: null };
@@ -142,7 +143,7 @@ app.get("/login", (req, res) => {
   if (!id) {
     res.render("login", templateVars);
   } else {
-    res.redirect('/urls')
+    res.redirect('/urls');
   }
 
 });
@@ -151,11 +152,11 @@ app.get("/login", (req, res) => {
 
 
 // --------- urls POST --------- //
-// adds a new url to the database while redirecting to short url page
+// adds a new url to the database if you've logged in.
 app.post("/urls", (req, res) => {
   const id = req.session.user_id;
   
-  if(id) {
+  if (id) {
     let randoStr = generateRandomString();
     urlDatabase[randoStr] = {longURL: req.body.longURL, userID: id};
     res.redirect(`/urls/${randoStr}`);
@@ -175,13 +176,14 @@ app.post("/urls/:shortURL/delete", (req, res) => {
     delete urlDatabase[shortURLToBeDeleted];
     res.redirect('/urls');
   } else {
-    res.status(401).send("Unauthorized")
+    const errorMsg = "Unauthorized";
+    res.status(401).render('error', { user, errorMsg});
+    
   }
-  
 });
 
 // --------- edit url POST --------- //
-// edit a short urls corresponding long url only if logged in.
+// edit a shortURL if you're logged in.
 app.post("/urls/:shortURL/edit", (req, res) => {
   const shortURLToBeEdited = req.params.shortURL;
   const shortURL = urlDatabase[shortURLToBeEdited];
@@ -189,16 +191,17 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   const user = users[id];
 
   if (id && id === shortURL.userID) {
-    shortURL.longURL = req.body.longURL
+    shortURL.longURL = req.body.longURL;
     res.redirect('/urls');
   } else {
-    return res.status(401).send("You don't have permission to do that.")
+    const errorMsg = "You don't have permission to do that.";
+    res.status(401).render('error', { user, errorMsg });
   }
 
 });
 
 // --------- login POST --------- //
-// upon entering correct login info, redirect to urls index.
+// login with an existing account. bcrypt compares the password stored and the password entered.
 app.post("/login", (req, res) => {
   const password = req.body.password;
   const email = req.body.email;
@@ -222,14 +225,14 @@ app.post("/login", (req, res) => {
 });
 
 // --------- logout POST --------- //
-// clears cookies and redirects to urls index
+// clears cookies and redirects to login
 app.post("/logout", (req, res) => {
   req.session = null;
   res.redirect('/login');
 });
 
 // --------- registration POST --------- //
-// properly entering credentials results in a redirection to urls.
+// properly entering all required info hashes password and results in a redirection to urls. If account exists, recieve an html error msg.
 app.post("/register", (req, res) => {
   const password = req.body.password;
   const email = req.body.email;
